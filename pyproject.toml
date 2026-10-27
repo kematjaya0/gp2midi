@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gp2midi"
+version = "0.1.0"
+description = "Konversi file Guitar Pro 7/8 (.gp) ke Standard MIDI File multi-track"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+# playback realtime; engine tetap nol dependensi
+play = ["pyfluidsynth==1.4.0", "numpy"]
+
+[project.scripts]
+gp2midi = "gp2midi.cli:main"
+
+[tool.setuptools]
+packages = ["gp2midi", "gp2midi.play"]

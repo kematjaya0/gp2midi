@@ -1,0 +1,71 @@
+name: gp2midi
+
+# Lingkungan pengembangan engine: tidak ada logika baru di sini dan
+# gp2midi/*.py tidak disentuh. Dependensi native hanya di gambar kontainer,
+# sesuai batas yang sama (gp2midi/play/ satu-satunya tempat native).
+
+x-volumes-engine: &volumes-engine
+  - .:/work
+  - /work/.venv-app   # sembunyikan .venv-app host: biner host tak valid di kontainer,
+                      # dan dengan sengaja kosong, verify.sh melewati tingkat 4/4
+  - venv-oracle-docker:/work/.venv-oracle
+                      # venv host memakai symlink /usr/bin/python3 (patah di image);
+                      # venv kontainer dibuat sekali di named volume ini (mido)
+
+services:
+  # docker compose run --rm dev          -> shell di /work
+  dev:
+    build: .
+    working_dir: /work
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HOME: /tmp
+    volumes: *volumes-engine
+    stdin_open: true
+    tty: true
+    command: bash
+
+  # docker compose run --rm test        -> unit test engine (python3 sistem gambar)
+  test:
+    build: .
+    working_dir: /work
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HOME: /tmp
+    volumes: *volumes-engine
+    command: python3 -m unittest discover -s tests -t .
+
+  # docker compose run --rm verify      -> tools/verify.sh tingkat 1-3
+  #   (tingkat 4/4 dilewati otomatis karena .venv-app sengaja dikosongkan)
+  verify:
+    build: .
+    working_dir: /work
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HOME: /tmp
+    volumes: *volumes-engine
+    command: ./tools/verify.sh
+
+  # playback realtime lewat socket PulseAudio host (Linux saja);
+  # docker compose --profile audio run --rm playback media/lagu.gp
+  #   opsi play bisa diteruskan:  ... playback media/lagu.gp --silent --report
+  playback:
+    profiles: [audio]
+    build: .
+    working_dir: /work
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HOME: /tmp
+      PULSE_SERVER: unix:/run/pulse/native
+    volumes:
+      - .:/work
+      - /work/.venv-app
+      - venv-oracle-docker:/work/.venv-oracle
+      # socket audio host; baca ulang dari mesin lain dengan:
+      #   PULSE_NATIVE=/jalankan/pulse/native docker compose --profile audio run ...
+      - ${PULSE_NATIVE:-/run/user/${UID:-1000}/pulse/native}:/run/pulse/native
+    entrypoint: ["/opt/venv-app/bin/python", "-m", "gp2midi", "play"]
+
+# volume bernama di luar bind mount; isi venv tidak tercampur dengan direktori host
+volumes:
+  venv-oracle-docker:

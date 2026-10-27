@@ -1,0 +1,11 @@
+venv*
+*.pyc
+__pycache__/
+**/__pycache__/
+*.mid
+media/
+.git/
+.plans/
+/AGENTS.md
+/PRD.md
+/README.md
